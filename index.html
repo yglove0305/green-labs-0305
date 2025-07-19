@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta name="description" content="초록타자는 타자 실력을 키우는 웹 기반 연습 도구입니다.">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>초록타자 3</title>
+  <link rel="icon" type="image/png" href="https://ifh.cc/g/bt8xA2.jpg">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* 배경 패턴 */
+    body {
+      background: linear-gradient(120deg, #e8f5e9 0%, #f5fffa 100%) fixed;
+      background-image: repeating-linear-gradient(135deg, #d9f8e6 0px, #d9f8e6 10px, #e8f5e9 10px, #e8f5e9 20px);
+      font-family: 'Nanum Gothic', Arial, sans-serif;
+      color: #2e7d32;
+      padding: 20px;
+      min-height: 100vh;
+      position: relative;
+    }
+    /* 인트로(로딩) 스타일 */
+    #intro-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(10, 24, 15, 0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.6s ease;
+    }
+    #intro-overlay.hide { opacity: 0; pointer-events: none; }
+    .intro-text {
+      font-size: 6rem;
+      font-weight: bold;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(90deg, #00ff99, #00ffff, #00cc66, #00ff99);
+      background-size: 400%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradientShift 4s infinite, glow 1.5s ease-in-out infinite alternate;
+      letter-spacing: 0.2em;
+      text-shadow: 0 4px 40px #00ffbb66;
+    }
+    .intro-loading {
+      margin-top: 30px;
+      color: #00ff99;
+      font-size: 1.8rem;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.08em;
+      opacity: 1;
+      text-shadow: 0 0 6px #00ffbb88;
+      transition: opacity 0.5s ease-out;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% }
+      50% { background-position: 100% }
+      100% { background-position: 0% }
+    }
+    @keyframes glow {
+      from { text-shadow: 0 0 10px #00ff99, 0 0 30px #00cc66; }
+      to   { text-shadow: 0 0 30px #00ff99, 0 0 60px #00ffff; }
+    }
+
+    /* 메인 컨테이너 */
+    #container {
+      max-width: 950px;
+      margin: 28px auto 0 auto;
+      background: rgba(255,255,255,0.96);
+      box-shadow: 0 5px 32px rgba(60, 180, 110, 0.10), 0 2px 8px rgba(60,180,110,0.08);
+      border-radius: 18px;
+      padding: 36px 30px 30px 30px;
+      position: relative;
+      border: 1.5px solid #b9e4c9;
+      backdrop-filter: blur(2px);
+      transition: background 0.4s;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 32px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.6rem;
+      letter-spacing: 0.08em;
+      color: #037d50;
+      text-shadow: 0 2px 24px #00ffbb22;
+    }
+    /* 설정 패널 */
+    #settings {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px dashed #b6e7b5;
+      padding-bottom: 16px;
+    }
+    #settings div {
+      margin-bottom: 10px;
+      min-width: 180px;
+    }
+    label {
+      margin-right: 7px;
+      font-weight: bold;
+      color: #3c6e53;
+      letter-spacing: 0.01em;
+    }
+    select {
+      padding: 5px 12px;
+      border-radius: 7px;
+      border: 1px solid #b2dfdb;
+      background: #e0f7fa;
+      font-size: 1rem;
+      margin-left: 2px;
+      transition: border 0.2s;
+      outline: none;
+    }
+    select:focus { border: 1.5px solid #26c485; }
+
+    /* 샘플 문장 */
+    #sample-text {
+      background: linear-gradient(90deg,#e0f2f1 85%, #cbf2e6 100%);
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 1.19rem;
+      margin-bottom: 16px;
+      line-height: 1.6;
+      min-height: 84px;
+      box-shadow: 0 0 8px #b9f7e5aa;
+      border: 1px solid #b2dfdb;
+      font-family: 'Nanum Gothic', Arial, sans-serif;
+      letter-spacing: 0.01em;
+      transition: background 0.3s;
+    }
+    /* 진행바 */
+    #progress-container {
+      width: 100%;
+      background-color: #e8efe7;
+      border-radius: 7px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      border: 1px solid #b9e4c9;
+      height: 22px;
+    }
+    #progress-bar {
+      height: 22px;
+      width: 0%;
+      background: linear-gradient(90deg,#66bb6a,#00e88c 70%,#26d4b9);
+      text-align: center;
+      line-height: 22px;
+      color: white;
+      font-weight: bold;
+      letter-spacing: 0.02em;
+      font-size: 1.02rem;
+      transition: width 0.5s cubic-bezier(.6,.5,.2,1.3);
+    }
+    /* 타자 입력창 */
+    #typing-area {
+      width: 100%;
+      height: 110px;
+      font-size: 18px;
+      padding: 14px;
+      border: 2.2px solid #a5d6a7;
+      border-radius: 8px;
+      box-sizing: border-box;
+      margin-bottom: 18px;
+      resize: none;
+      font-family: 'Nanum Gothic', Arial, sans-serif;
+      letter-spacing: 0.015em;
+      box-shadow: 0 3px 8px #00ffbb11 inset;
+      outline: none;
+      background: #f7fff7;
+      transition: border 0.3s, box-shadow 0.3s;
+    }
+    #typing-area:focus { border: 2.2px solid #00cca7; box-shadow: 0 0 16px #bdf2e844; }
+    /* 통계 패널 */
+    #stats {
+      display: flex;
+      justify-content: space-evenly;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px dashed #b6e7b5;
+    }
+    #stats span {
+      font-weight: bold;
+      font-size: 1.09rem;
+      margin: 5px 0;
+      color: #388e3c;
+      letter-spacing: 0.01em;
+      font-family: 'Nanum Gothic', Arial, sans-serif;
+      background: #dcffd6;
+      border-radius: 5px;
+      padding: 3px 10px;
+      box-shadow: 0 2px 8px #b9f7e555;
+    }
+    /* 버튼 디자인 */
+    button {
+      padding: 11px 26px;
+      background: linear-gradient(90deg,#66bb6a 60%,#00e88c 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.08rem;
+      font-family: 'Nanum Gothic', Arial, sans-serif;
+      margin-right: 12px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      box-shadow: 0 3px 16px #00ffbb22;
+      letter-spacing: 0.01em;
+      position: relative;
+      transition: background 0.22s, transform 0.15s, box-shadow 0.2s;
+    }
+    button:last-child { margin-right: 0; }
+    button:hover, button:focus {
+      background: linear-gradient(90deg,#00cc99 0%,#00e88c 100%);
+      transform: translateY(-4px) scale(1.06);
+      box-shadow: 0 8px 32px #00ffbb44;
+      outline: none;
+    }
+    /* 다크/라이트 토글 버튼 */
+    #toggle-mode {
+      position: absolute;
+      top: 22px;
+      right: 30px;
+      padding: 7px 18px;
+      background: linear-gradient(90deg,#388e3c,#00bfae);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 1.02rem;
+      font-weight: bold;
+      box-shadow: 0 2px 12px #00ffbb33;
+      z-index: 3;
+      transition: background 0.2s, color 0.2s;
+    }
+    #toggle-mode:hover { background: linear-gradient(90deg,#00bfae,#388e3c); }
+    /* 하이라이트 효과 */
+    .highlight {
+      background: linear-gradient(100deg, #ffcdd2 60%, #ffebee 100%) !important;
+      color: #d32f2f !important;
+      border-radius: 3px;
+      transition: background 0.2s;
+      padding: 1px 2px;
+      font-weight: bold;
+    }
+    /* fade-in 애니메이션 */
+    .fade-in { animation: fadeIn 0.5s ease-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* 구분선 스타일 */
+    #leaderboard, #chart-container, #history {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1.5px solid #c8eadb;
+      margin-bottom: 0;
+    }
+    #leaderboard h3, #chart-container h3, #history h3 {
+      color: #008c61;
+      font-family: 'Nanum Gothic', Arial, sans-serif;
+      font-size: 1.18rem;
+      margin-bottom: 10px;
+      margin-top: 0;
+      letter-spacing: 0.02em;
+    }
+    #leaderboard-list, #history-list {
+      padding-left: 17px;
+      margin-top: 0;
+      margin-bottom: 0;
+      font-size: 1.03rem;
+      color: #2e7d32;
+    }
+    #leaderboard-list li, #history-list li {
+      padding: 2.5px 0 2.5px 0;
+      border-bottom: 1px dotted #c8eadb;
+      margin-bottom: 2.5px;
+      line-height: 1.5;
+      transition: background 0.18s;
+    }
+    #leaderboard-list li:hover, #history-list li:hover {
+      background: #eafff5;
+      color: #037d50;
+    }
+    /* 차트 컨테이너 */
+    #chart-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    #history-chart {
+      margin-top: 8px;
+      background: #f9fff9;
+      border-radius: 10px;
+      border: 1px solid #b4e5c9;
+      box-shadow: 0 1px 8px #a7e8ce44;
+    }
+    /* 다크 모드용 */
+    body.dark {
+      background: #222a25 !important;
+      color: #ECEFF1 !important;
+      background-image: none !important;
+    }
+    #container.dark {
+      background: #2d3a34 !important;
+      color: #ECEFF1 !important;
+      border-color: #3ed7a5;
+    }
+    #sample-text.dark {
+      background: #2c4237 !important;
+      color: #ECEFF1 !important;
+      border-color: #28f2c6;
+    }
+    #progress-container.dark { background-color: #33453c !important; border-color: #28f2c6; }
+    #progress-bar.dark { background: linear-gradient(90deg,#26e47d,#22bfae 80%) !important; }
+    #typing-area.dark {
+      background: #263238 !important;
+      color: #ECEFF1 !important;
+      border-color: #17d0a0 !important;
+      box-shadow: 0 2px 8px #22bfae33 inset;
+    }
+    button.dark, #toggle-mode.dark {
+      background: linear-gradient(90deg,#2fbe6b,#26d4b9) !important;
+      color: #ECEFF1 !important;
+      box-shadow: 0 2px 12px #17d0a044;
+    }
+    #leaderboard.dark, #history.dark, #chart-container.dark {
+      color: #ECEFF1 !important;
+    }
+    #leaderboard-list.dark li, #history-list.dark li {
+      color: #fff !important;
+      background: #25332c !important;
+    }
+    /* 반응형 */
+    @media (max-width: 700px) {
+      #container { padding: 16px 5px; }
+      #settings { flex-direction: column; gap: 0; }
+      #sample-text { font-size: 1.03rem; }
+      h1 { font-size: 1.45rem; }
+      button { font-size: 0.97rem; padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 인트로(로딩) 오버레이 -->
+  <div id="intro-overlay">
+    <div class="intro-text">초록타자</div>
+    <div class="intro-loading" id="loading">로딩중...</div>
+  </div>
+  <!-- 본문 -->
+  <button id="toggle-mode">다크 모드</button>
+  <div id="container" style="opacity:1;">
+    <h1>초록타자 3</h1>
+    <div id="settings">
+      <div>
+        <label for="mode-select">모드 선택:</label>
+        <select id="mode-select">
+          <option value="unlimited" selected>무제한 모드</option>
+          <option value="timed">시간 제한 (60초)</option>
+          <option value="error-limit">오류 제한 (3오류)</option>
+        </select>
+      </div>
+      <div>
+        <label for="difficulty-select">난이도 선택:</label>
+        <select id="difficulty-select">
+          <option value="easy" selected>쉬움</option>
+          <option value="medium">보통</option>
+          <option value="hard">어려움</option>
+        </select>
+      </div>
+      <div>
+        <label for="font-size">폰트 크기:</label>
+        <select id="font-size">
+          <option value="small">작게</option>
+          <option value="medium" selected>보통</option>
+          <option value="large">크게</option>
+        </select>
+      </div>
+    </div>
+    <div id="sample-text"></div>
+    <div id="progress-container">
+      <div id="progress-bar">0%</div>
+    </div>
+    <textarea id="typing-area" placeholder="여기에 타자를 입력하세요..."></textarea>
+    <div id="stats">
+      <span id="timer">시간: 0초</span>
+      <span id="wpm">WPM: 0</span>
+      <span id="accuracy">정확도: 100%</span>
+      <span id="error-count">오류: 0</span>
+    </div>
+    <button id="reset-btn">새로운 도전</button>
+    <button id="export-btn">CSV 내보내기</button>
+    <button id="save-progress-btn">진행상황 저장</button>
+    <button id="load-progress-btn">진행상황 불러오기</button>
+    <input type="file" id="progress-file-input" style="display:none;" accept=".ty">
+    <div id="leaderboard">
+      <h3>리더보드 (최고 WPM)</h3>
+      <ul id="leaderboard-list"></ul>
+    </div>
+    <div id="chart-container">
+      <h3>연습 기록 차트</h3>
+      <canvas id="history-chart" width="400" height="200"></canvas>
+    </div>
+    <div id="history">
+      <h3>최근 기록</h3>
+      <ul id="history-list"></ul>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // --- 인트로(로딩) 2초간 보여주기 ---
+    window.addEventListener('DOMContentLoaded', function() {
+      const intro = document.getElementById('intro-overlay');
+      const mainContainer = document.getElementById('container');
+      setTimeout(() => {
+        intro.classList.add('hide');
+        setTimeout(() => {
+          intro.style.display = "none";
+          mainContainer.style.opacity = 1;
+        }, 600);
+      }, 2000);
+    });
+
+    let currentSentences = [];
+    let currentSentenceIndex = 0;
+    let currentText = "";
+    let overallTypedChars = 0;
+    let overallCorrectChars = 0;
+    let startTime = null;
+    let timerInterval = null;
+    let errorCount = 0;
+    let isComposing = false;
+    let mode = "unlimited";
+    const timeLimit = 60;
+    const errorLimit = 3;
+
+    const modeSelect = document.getElementById("mode-select");
+    const difficultySelect = document.getElementById("difficulty-select");
+    const fontSizeSelect = document.getElementById("font-size");
+    const typingArea = document.getElementById("typing-area");
+    const sampleText = document.getElementById("sample-text");
+    const container = document.getElementById("container");
+    const toggleBtn = document.getElementById("toggle-mode");
+
+    // 폰트 크기 적용
+    function applyFontSize() {
+      const size = fontSizeSelect.value;
+      if(size === "small") typingArea.style.fontSize = "14px";
+      else if(size === "medium") typingArea.style.fontSize = "18px";
+      else if(size === "large") typingArea.style.fontSize = "23px";
+    }
+    fontSizeSelect.addEventListener("change", applyFontSize);
+
+    // 모드 변경
+    modeSelect.addEventListener("change", () => {
+      mode = modeSelect.value;
+      loadNewText();
+    });
+
+    // 난이도(예비용)
+    difficultySelect.addEventListener("change", loadNewText);
+
+    const allSentences = [
+      "오늘 아침 공기는 상쾌하다.",
+      "따스한 햇살이 창문을 비춘다.",
+      "커피 한 잔의 여유를 즐겨보자.",
+      "바쁜 하루 속에서도 작은 쉼표가 필요하다.",
+      "책 한 권과 따뜻한 차가 최고의 조합이다.",
+      "자연은 언제나 우리에게 영감을 준다.",
+      "친구와의 대화는 마음의 에너지를 충전시킨다.",
+      "도전은 새로운 가능성의 시작이다.",
+      "꿈은 노력하는 사람의 발걸음을 이끈다.",
+      "작은 변화가 큰 결과를 만든다.",
+      "행복은 스스로 만들어 가는 것이다.",
+      "웃음은 마음을 치유하는 마법이다.",
+      "시간은 누구에게나 공평하게 주어진다.",
+      "진정한 우정은 오랜 시간이 지나도 변하지 않는다.",
+      "학습은 평생 동안 계속되어야 한다.",
+      "자신감을 가지고 도전에 임하라.",
+      "오늘은 내일보다 더 특별한 날이다.",
+      "긍정적인 생각이 인생을 바꾼다.",
+      "성공은 준비된 자에게 찾아온다.",
+      "노력은 결코 배신하지 않는다.",
+      "실패는 성공을 위한 발판이다.",
+      "끊임없는 열정이 최고의 성과를 이끈다.",
+      "용기는 두려움을 이기는 힘이다.",
+      "매일 반복되는 일상 속에도 소중한 순간이 있다.",
+      "희망은 어둠 속에서 빛나는 별이다.",
+      "도전 정신은 미래를 열어준다.",
+      "작은 성취가 큰 자신감을 불러온다.",
+      "꾸준한 연습은 반드시 결실을 맺는다.",
+      "현재의 노력이 내일의 꿈을 현실로 만든다.",
+      "자신의 한계를 넘어서기 위해 노력하라.",
+      "매 순간 최선을 다하는 것이 중요하다.",
+      "인내는 승리의 열쇠이다.",
+      "배움에는 끝이 없다.",
+      "새로운 시작은 언제나 설렘으로 가득하다.",
+      "변화는 도전을 두려워하지 않은 자의 것이다.",
+      "함께라면 어려움도 이겨낼 수 있다.",
+      "열린 마음이 새로운 기회를 만든다.",
+      "자연의 소리에 귀 기울여 보자.",
+      "조용한 아침 산책은 마음의 안식을 준다.",
+      "별을 바라보며 꿈을 꾸자.",
+      "매일 조금씩 발전하는 나를 느낀다.",
+      "노력이 쌓이면 큰 성과를 이룬다.",
+      "정직함은 최고의 미덕이다.",
+      "사랑은 모든 것을 극복한다.",
+      "작은 친절이 큰 기적을 만든다.",
+      "의지력이 강한 사람은 반드시 성공한다.",
+      "매 순간을 소중히 여기자.",
+      "시간은 우리 모두에게 주어진 귀한 자원이다.",
+      "서로의 다름을 인정하는 것이 성숙이다.",
+      "자연을 보호하는 것은 우리의 책임이다.",
+      "과거는 배움의 원천이다.",
+      "오늘의 노력은 내일의 보상이다.",
+      "노력과 끈기는 최고의 동반자이다.",
+      "긍정적인 에너지가 주변을 밝혀준다.",
+      "작은 목표가 큰 꿈으로 이어진다.",
+      "미래는 현명하게 준비한 사람의 것이다.",
+      "배움에 대한 열정은 마음의 불씨이다.",
+      "시간을 소중히 여기며 생활하자.",
+      "희망은 모든 어려움을 극복하게 해준다.",
+      "매일 아침 새로운 기회가 주어진다.",
+      "열심히 일한 보람을 느껴보자.",
+      "자신만의 길을 걸으며 꿈을 향해 나아가자.",
+      "성공은 작은 습관의 반복이다.",
+      "자연의 아름다움에 감탄하며 살아가자.",
+      "모든 순간이 인생의 귀중한 기록이다.",
+      "내일은 오늘보다 더 빛날 것이다.",
+      "마음의 여유를 가지며 살아가자.",
+      "작은 용기가 큰 변화를 만든다.",
+      "서로를 존중하는 사회가 되자."
+    ];
+
+    function getRandomSentences() {
+      let shuffled = allSentences.slice().sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 10);
+    }
+
+    function resetHighlights() {
+      sampleText.innerHTML = currentText.split("")
+        .map(letter => `<span>${letter}</span>`)
+        .join("");
+      sampleText.classList.remove("fade-in");
+      void sampleText.offsetWidth;
+      sampleText.classList.add("fade-in");
+    }
+
+    function resetStats() {
+      document.getElementById("error-count").textContent = "오류: 0";
+      errorCount = 0;
+    }
+
+    function updateProgressBar() {
+      const progressBar = document.getElementById("progress-bar");
+      const percentage = Math.round((currentSentenceIndex / currentSentences.length) * 100);
+      progressBar.style.width = percentage + "%";
+      progressBar.textContent = percentage + "%";
+    }
+
+    // localStorage 오류 대비
+    let leaderboard = [];
+    let historyResults = [];
+    try {
+      leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    } catch (e) { leaderboard = []; }
+    try {
+      historyResults = JSON.parse(localStorage.getItem("typingHistory")) || [];
+    } catch (e) { historyResults = []; }
+
+    function updateLeaderboard(newResult) {
+      leaderboard.push(newResult);
+      leaderboard.sort((a, b) => b.wpm - a.wpm);
+      leaderboard = leaderboard.slice(0, 5);
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      renderLeaderboard();
+    }
+
+    function renderLeaderboard() {
+      const leaderboardList = document.getElementById("leaderboard-list");
+      leaderboardList.innerHTML = "";
+      leaderboard.forEach((entry, index) => {
+        const li = document.createElement("li");
+        li.textContent = `#${index + 1}: WPM ${entry.wpm}, 정확도 ${entry.accuracy}%, 오류 ${entry.errorCount}`;
+        leaderboardList.appendChild(li);
+      });
+      leaderboardList.classList.toggle("dark", darkMode);
+    }
+
+    function saveResult(result) {
+      historyResults.push(result);
+      localStorage.setItem("typingHistory", JSON.stringify(historyResults));
+      renderHistory();
+      updateChart();
+      updateLeaderboard(result);
+    }
+
+    function renderHistory() {
+      const historyList = document.getElementById("history-list");
+      historyList.innerHTML = "";
+      historyResults.slice().reverse().forEach((result, index) => {
+        const li = document.createElement("li");
+        li.textContent = `도전 ${historyResults.length - index}: 시간 ${result.time}초, WPM ${result.wpm}, 정확도 ${result.accuracy}%, 오류 ${result.errorCount}`;
+        historyList.appendChild(li);
+      });
+      historyList.classList.toggle("dark", darkMode);
+    }
+
+    function playErrorSound() {
+      if (window.errorSoundCtx && window.errorSoundCtx.state !== 'closed') {
+        window.errorSoundCtx.close();
+      }
+      window.errorSoundCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const context = window.errorSoundCtx;
+      const oscillator = context.createOscillator();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(440, context.currentTime);
+      oscillator.connect(context.destination);
+      oscillator.start();
+      setTimeout(() => {
+        oscillator.stop();
+        oscillator.disconnect();
+        context.close();
+      }, 100);
+    }
+
+    function updateHighlight() {
+      const typed = typingArea.value;
+      const spans = sampleText.querySelectorAll("span");
+      let localErrorCount = 0;
+      let playedErrorSound = false;
+      spans.forEach((span, i) => {
+        const letter = typed[i];
+        if(letter == null) {
+          span.classList.remove("highlight");
+        } else if(letter === span.textContent) {
+          span.classList.remove("highlight");
+        } else {
+          if(!span.classList.contains("highlight")) {
+            if (!playedErrorSound) {
+              playErrorSound();
+              playedErrorSound = true;
+            }
+          }
+          span.classList.add("highlight");
+          localErrorCount++;
+        }
+      });
+      errorCount = localErrorCount;
+      document.getElementById("error-count").textContent = "오류: " + errorCount;
+      if(mode === "error-limit" && errorCount >= errorLimit)
+        finishChallenge();
+    }
+
+    function calculateStats() {
+      const currentTyped = typingArea.value;
+      let currentCorrect = 0;
+      for(let i = 0; i < currentTyped.length; i++) {
+        if(currentTyped[i] === currentText[i]) currentCorrect++;
+      }
+      let totalTyped = overallTypedChars + currentTyped.length;
+      let totalCorrect = overallCorrectChars + currentCorrect;
+      const elapsedTime = (Date.now() - startTime) / 1000;
+      const wpm = elapsedTime > 0 ? Math.round((totalTyped / 5) / (elapsedTime / 60)) : 0;
+      const accuracy = totalTyped === 0 ? 100 : Math.round((totalCorrect / totalTyped) * 100);
+      document.getElementById("timer").textContent = "시간: " + Math.floor(elapsedTime) + "초";
+      document.getElementById("wpm").textContent = "WPM: " + wpm;
+      document.getElementById("accuracy").textContent = "정확도: " + accuracy + "%";
+      document.getElementById("error-count").textContent = "오류: " + errorCount;
+      if(mode === "timed" && elapsedTime >= timeLimit)
+        finishChallenge();
+    }
+
+    function finishChallenge() {
+      if (typingArea.disabled) return;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      const currentTyped = typingArea.value;
+      let currentCorrect = 0;
+      for(let i = 0; i < currentTyped.length; i++) {
+        if(currentTyped[i] === currentText[i]) currentCorrect++;
+      }
+      let finalTyped = overallTypedChars + currentTyped.length;
+      let finalCorrect = overallCorrectChars + currentCorrect;
+      const elapsedTime = (Date.now() - startTime) / 1000;
+      const wpm = elapsedTime > 0 ? Math.round((finalTyped / 5) / (elapsedTime / 60)) : 0;
+      const accuracy = finalTyped === 0 ? 100 : Math.round((finalCorrect / finalTyped) * 100);
+      typingArea.disabled = true;
+      updateProgressBar();
+      const result = {
+        time: Math.floor(elapsedTime),
+        wpm: wpm,
+        accuracy: accuracy,
+        errorCount: errorCount,
+        sentences: currentSentences,
+        mode: mode,
+        timestamp: new Date().toISOString()
+      };
+      saveResult(result);
+    }
+
+    function startTimer() {
+      if(!startTime && !timerInterval) {
+        startTime = Date.now();
+        timerInterval = setInterval(calculateStats, 1000);
+      }
+    }
+
+    function loadNewText() {
+      currentSentences = getRandomSentences();
+      currentSentenceIndex = 0;
+      currentText = currentSentences[currentSentenceIndex];
+      overallTypedChars = 0;
+      overallCorrectChars = 0;
+      sampleText.innerHTML = "";
+      resetHighlights();
+      typingArea.value = "";
+      typingArea.disabled = false;
+      resetStats();
+      clearInterval(timerInterval);
+      timerInterval = null;
+      startTime = null;
+      updateProgressBar();
+      document.getElementById("timer").textContent = "시간: 0초";
+      document.getElementById("wpm").textContent = "WPM: 0";
+      document.getElementById("accuracy").textContent = "정확도: 100%";
+      resetHighlights();
+    }
+
+    // CSV 내보내기 (BOM 추가)
+    function exportCSV() {
+      if(!historyResults.length) return;
+      let csvContent = "\uFEFF";
+      csvContent += "시간(초),WPM,정확도(%),오류,모드,문장들,타임스탬프\n";
+      historyResults.forEach(result => {
+        const safeTimestamp = result.timestamp ? result.timestamp : '';
+        csvContent += `"${result.time}","${result.wpm}","${result.accuracy}","${result.errorCount}","${result.mode.replace(/"/g, '""')}","${(result.sentences||[]).join(" | ").replace(/"/g, '""')}","${safeTimestamp}"\n`;
+      });
+      const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "typing_history.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // 진행상황 저장
+    document.getElementById("save-progress-btn").addEventListener("click", function() {
+      const progress = {
+        currentSentences,
+        currentSentenceIndex,
+        currentText,
+        overallTypedChars,
+        overallCorrectChars,
+        startTime,
+        errorCount,
+        mode,
+        typingValue: typingArea.value,
+        darkMode
+      };
+      const blob = new Blob([JSON.stringify(progress)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "진행상황.ty";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // 진행상황 불러오기
+    document.getElementById("load-progress-btn").addEventListener("click", function() {
+      document.getElementById("progress-file-input").click();
+    });
+    document.getElementById("progress-file-input").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          const progress = JSON.parse(ev.target.result);
+          currentSentences = progress.currentSentences || [];
+          currentSentenceIndex = progress.currentSentenceIndex || 0;
+          currentText = progress.currentText || "";
+          overallTypedChars = progress.overallTypedChars || 0;
+          overallCorrectChars = progress.overallCorrectChars || 0;
+          startTime = progress.startTime || null;
+          errorCount = progress.errorCount || 0;
+          mode = progress.mode || "unlimited";
+          typingArea.value = progress.typingValue || "";
+          darkMode = progress.darkMode || false;
+
+          modeSelect.value = mode;
+          resetHighlights();
+          updateProgressBar();
+          resetStats();
+          updateHighlight();
+          calculateStats();
+          typingArea.disabled = false;
+          if (darkMode) setDarkMode(true); else setDarkMode(false);
+        } catch (err) {
+          alert("진행상황 파일이 올바르지 않습니다!");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    });
+
+    let chart;
+    function updateChart() {
+      const chartEl = document.getElementById("history-chart");
+      if (!chartEl) return;
+      const ctx = chartEl.getContext("2d");
+      const labels = historyResults.map(result => {
+        if (result.timestamp) {
+          try {
+            return new Date(result.timestamp).toLocaleTimeString();
+          } catch (e) {
+            return '';
+          }
+        }
+        return '';
+      });
+      const dataWpm = historyResults.map(result => result.wpm);
+      if(chart) {
+        chart.destroy();
+      }
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'WPM 추이',
+            data: dataWpm,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.14)',
+            fill: true,
+            pointBackgroundColor: '#00bc88',
+            tension: 0.2,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true } },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // 다크/라이트 모드 토글
+    let darkMode = false;
+    function setDarkMode(on) {
+      darkMode = on;
+      document.body.classList.toggle("dark", darkMode);
+      container.classList.toggle("dark", darkMode);
+      sampleText.classList.toggle("dark", darkMode);
+      document.getElementById("progress-container").classList.toggle("dark", darkMode);
+      document.getElementById("progress-bar").classList.toggle("dark", darkMode);
+      typingArea.classList.toggle("dark", darkMode);
+      toggleBtn.classList.toggle("dark", darkMode);
+      document.getElementById("leaderboard").classList.toggle("dark", darkMode);
+      document.getElementById("history").classList.toggle("dark", darkMode);
+      document.getElementById("chart-container").classList.toggle("dark", darkMode);
+      renderLeaderboard();
+      renderHistory();
+      toggleBtn.textContent = darkMode ? "라이트 모드" : "다크 모드";
+    }
+    function toggleMode() { setDarkMode(!darkMode); }
+    toggleBtn.addEventListener("click", toggleMode);
+
+    typingArea.addEventListener("compositionstart", () => { isComposing = true; });
+    typingArea.addEventListener("compositionend", () => {
+      isComposing = false; updateHighlight(); calculateStats();
+    });
+    typingArea.addEventListener("input", () => {
+      if (!isComposing) {
+        if(!startTime) startTimer();
+        updateHighlight();
+        calculateStats();
+      } else {
+        if(!startTime) startTimer();
+      }
+    });
+    typingArea.addEventListener("keydown", (event) => {
+      if(isComposing) return;
+      if(event.key === "Enter") {
+        event.preventDefault();
+        let typed = typingArea.value;
+        if(typed === currentText) {
+          overallTypedChars += currentText.length;
+          overallCorrectChars += currentText.length;
+          currentSentenceIndex++;
+          updateProgressBar();
+          if(currentSentenceIndex < currentSentences.length) {
+            currentText = currentSentences[currentSentenceIndex];
+            sampleText.innerHTML = "";
+            resetHighlights();
+            typingArea.value = "";
+            resetStats();
+          } else {
+            finishChallenge();
+          }
+        } else {
+          playErrorSound();
+        }
+      }
+    });
+
+    document.getElementById("reset-btn").addEventListener("click", loadNewText);
+    document.getElementById("export-btn").addEventListener("click", exportCSV);
+
+    // 초기화
+    loadNewText();
+    renderHistory();
+    renderLeaderboard();
+    updateChart();
+    applyFontSize();
+  </script>
+</body>
+</html>
