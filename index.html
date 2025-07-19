@@ -1,12 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta name="description" content="초록타자는 타자 실력을 키우는 웹 기반 연습 도구입니다.">
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>초록타자 3</title>
-  <link rel="icon" type="image/png" href="https://ifh.cc/g/bt8xA2.jpg">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
   <style>
     /* 1. 공통 및 배경 ---------------------------------------------------------------- */
 html, body {
@@ -684,15 +680,15 @@ input[type="text"]:focus {
 </head>
 <body>
   <!-- 인트로(로딩) 오버레이 -->
-  <div id="intro-overlay">
-    <div class="intro-text">초록타자</div>
-    <div class="intro-loading" id="loading">로딩중...</div>
+  <div id="intro-overlay" style="position:fixed;inset:0;background:rgba(18,34,24,0.97);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <div class="intro-text" style="font-size:4rem;color:#00ffbb;font-family:Orbitron,Nanum Gothic,sans-serif;">초록타자</div>
+    <div class="intro-loading" id="loading" style="margin-top:40px;font-size:2.1rem;color:#4cffad;">로딩중...</div>
   </div>
   <!-- 본문 -->
   <button id="toggle-mode">다크 모드</button>
   <div id="container" style="opacity:1;">
     <h1>초록타자 3</h1>
-    <div id="settings">
+    <div id="settings" style="display:flex;gap:24px;margin-bottom:34px;">
       <div>
         <label for="mode-select">모드 선택:</label>
         <select id="mode-select">
@@ -783,7 +779,6 @@ input[type="text"]:focus {
     const container = document.getElementById("container");
     const toggleBtn = document.getElementById("toggle-mode");
 
-    // 폰트 크기 적용
     function applyFontSize() {
       const size = fontSizeSelect.value;
       if(size === "small") typingArea.style.fontSize = "14px";
@@ -792,13 +787,10 @@ input[type="text"]:focus {
     }
     fontSizeSelect.addEventListener("change", applyFontSize);
 
-    // 모드 변경
     modeSelect.addEventListener("change", () => {
       mode = modeSelect.value;
       loadNewText();
     });
-
-    // 난이도(예비용)
     difficultySelect.addEventListener("change", loadNewText);
 
     const allSentences = [
@@ -878,10 +870,12 @@ input[type="text"]:focus {
       return shuffled.slice(0, 10);
     }
 
+    // *** 버그 없는 띄어쓰기 하이라이트 ***
     function resetHighlights() {
-      sampleText.innerHTML = currentText.split("")
-        .map(letter => `<span>${letter}</span>`)
-        .join("");
+      // 공백은 &nbsp;로 바꿔서 span으로 감싸기
+      sampleText.innerHTML = currentText.split("").map(letter =>
+        letter === " " ? `<span>&nbsp;</span>` : `<span>${letter}</span>`
+      ).join("");
       sampleText.classList.remove("fade-in");
       void sampleText.offsetWidth;
       sampleText.classList.add("fade-in");
@@ -899,7 +893,6 @@ input[type="text"]:focus {
       progressBar.textContent = percentage + "%";
     }
 
-    // localStorage 오류 대비
     let leaderboard = [];
     let historyResults = [];
     try {
@@ -972,9 +965,10 @@ input[type="text"]:focus {
       let playedErrorSound = false;
       spans.forEach((span, i) => {
         const letter = typed[i];
+        // 띄어쓰기: span.innerHTML이 '&nbsp;'일 수도 있음 → 실제 비교는 span.textContent
         if(letter == null) {
           span.classList.remove("highlight");
-        } else if(letter === span.textContent) {
+        } else if(letter === (span.textContent || " ")) {
           span.classList.remove("highlight");
         } else {
           if(!span.classList.contains("highlight")) {
@@ -1068,7 +1062,6 @@ input[type="text"]:focus {
       resetHighlights();
     }
 
-    // CSV 내보내기 (BOM 추가)
     function exportCSV() {
       if(!historyResults.length) return;
       let csvContent = "\uFEFF";
@@ -1086,7 +1079,6 @@ input[type="text"]:focus {
       document.body.removeChild(link);
     }
 
-    // 진행상황 저장
     document.getElementById("save-progress-btn").addEventListener("click", function() {
       const progress = {
         currentSentences,
@@ -1109,7 +1101,6 @@ input[type="text"]:focus {
       document.body.removeChild(link);
     });
 
-    // 진행상황 불러오기
     document.getElementById("load-progress-btn").addEventListener("click", function() {
       document.getElementById("progress-file-input").click();
     });
@@ -1189,7 +1180,6 @@ input[type="text"]:focus {
       });
     }
 
-    // 다크/라이트 모드 토글
     let darkMode = false;
     function setDarkMode(on) {
       darkMode = on;
